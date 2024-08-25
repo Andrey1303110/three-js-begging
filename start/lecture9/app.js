@@ -5,7 +5,7 @@ import { DRACOLoader } from '../../libs/three/examples/jsm/loaders/DRACOLoader.j
 import { RGBELoader } from '../../libs/three/examples/jsm/loaders/RGBELoader.js';
 import { LoadingBar } from '../../libs/LoadingBar.js';
 
-class App{
+export class App{
 	constructor(){
 		const container = document.createElement( 'div' );
 		document.body.appendChild( container );
@@ -29,14 +29,16 @@ class App{
         container.appendChild( this.renderer.domElement );
 		this.setEnvironment();
 		
-        //Add code here to code-along with the video
+        this.loadingBar = new LoadingBar();
+        this.loadGLTF();
 
         this.controls = new OrbitControls( this.camera, this.renderer.domElement );
         this.controls.target.y = 0.04;
         this.controls.update();
         
         window.addEventListener('resize', this.resize.bind(this) );
-	}	
+        window.test = this;
+	}
     
     setEnvironment(){
         const loader = new RGBELoader();
@@ -55,7 +57,41 @@ class App{
     }
     
     loadGLTF(){
-        
+        const loader = new GLTFLoader();
+        loader.setPath('../../assets/car_1/');
+
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('../../libs/three/examples/jsm/libs/draco/');
+
+        loader.setDRACOLoader(dracoLoader);
+
+        loader.load(
+            'scene.gltf',
+            gltf => {
+                this.car = gltf.scene;
+                this.car.rotation.y = Math.PI/2;
+                this.car.scale.x = 0.25;
+                this.car.scale.y = 0.25;
+                this.car.scale.z = 0.25;
+                this.car.position.x = -0.25;
+                this.car.position.y = -0.5;
+                this.scene.add(gltf.scene);
+                this.loadingBar.visible = false;
+                this.renderer.setAnimationLoop(this.render.bind(this));
+
+                const bbox = new THREE.Box3().setFromObject(gltf.scene);
+                console.log(`x min:${bbox.min.x.toFixed(2)}`);
+                console.log(`y min:${bbox.min.y.toFixed(2)}`);
+                console.log(`x max:${bbox.max.x.toFixed(2)}`);
+                console.log(`y max:${bbox.max.y.toFixed(2)}`);
+            },
+            xhr => {
+                this.loadingBar.progress = (xhr.loaded/xhr.total);
+            },
+            err => {
+                console.error(err);
+            }
+        )
     }
     
     resize(){
@@ -64,10 +100,11 @@ class App{
         this.renderer.setSize( window.innerWidth, window.innerHeight );  
     }
     
-	render( ) {   
-        if (this.motorcycle) this.motorcycle.rotateY( 0.01 );
+	render() {
+        if (this.car) {
+            this.car.position.z += 0.01;
+        }
+
         this.renderer.render( this.scene, this.camera );
     }
 }
-
-export { App };
