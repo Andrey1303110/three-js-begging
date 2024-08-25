@@ -28,7 +28,7 @@ class App{
         const geometry = new THREE.TorusKnotGeometry(); 
         
         //Change this line to code-along with the video
-        const material = new THREE.MeshBasicMaterial( { color: 0x00FF00 });
+        const material = new THREE.MeshPhongMaterial( { color: 0xFF00F0, specular: 0x00FF00, shininess: 100 });
 
         this.mesh = new THREE.Mesh( geometry, material );
         
