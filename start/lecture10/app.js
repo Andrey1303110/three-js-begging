@@ -50,11 +50,13 @@ class App{
         const pmremGenerator = new THREE.PMREMGenerator( this.renderer );
         pmremGenerator.compileEquirectangularShader();
         
+        const self = this;
+        
         loader.load( '../../assets/hdr/venice_sunset_1k.hdr', ( texture ) => {
           const envMap = pmremGenerator.fromEquirectangular( texture ).texture;
           pmremGenerator.dispose();
 
-          this.scene.environment = envMap;
+          self.scene.environment = envMap;
 
         }, undefined, (err)=>{
             console.error( 'An error occurred setting the environment');
@@ -73,15 +75,31 @@ class App{
 			'knight.glb',
 			// called when the resource is loaded
 			gltf => {
-                
-                
                 this.knight = gltf.scene;
 
                 this.knight.traverse( child => {
                     if (child.isMesh && child.name == 'Cube') child.visible = false;
                 });
                 
-                //1. Add animation code here
+                this.mixer = new THREE.AnimationMixer( this.knight );
+                this.animations = {};
+
+                const names = [];
+
+                gltf.animations.forEach( clip => {
+                    const name = clip.name.toLowerCase();
+                    names.push(name);
+                    this.animations[name] = clip;
+                })
+
+                console.log( `animations: ${names.join(',')}`);
+                
+                this.action = 'look around';
+
+                const options = { name: 'look around' };
+
+                const gui = new GUI();
+                gui.add(options, 'name', names).onChange( name => { this.action = name });
 
 				this.scene.add( gltf.scene );
                 
@@ -105,7 +123,29 @@ class App{
     }
 
     set action(name){
-		//2. TO DO
+		if (this.actionName == name.toLowerCase()) return;
+				
+		const clip = this.animations[name.toLowerCase()];
+
+		if (clip!==undefined){
+			const action = this.mixer.clipAction( clip );
+			if (name=='die'){
+				action.clampWhenFinished = true;
+				action.setLoop( THREE.LoopOnce );
+			}
+			action.reset();
+			const nofade = this.actionName == 'die';
+			this.actionName = name.toLowerCase();
+			action.play();
+			if (this.curAction){
+				if (nofade){
+					this.curAction.enabled = false;
+				}else{
+					this.curAction.crossFadeTo(action, 0.5);
+				}
+			}
+			this.curAction = action;
+		}
 	}
     
     resize(){
@@ -116,8 +156,7 @@ class App{
     
 	render( ) {   
         const dt = this.clock.getDelta();
-        //3. Add mixer update
-
+        if (this.mixer) this.mixer.update(dt);
         this.renderer.render( this.scene, this.camera );
     }
 }
