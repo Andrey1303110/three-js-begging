@@ -102,7 +102,7 @@ export class App{
     
 	render() {
         if (this.car) {
-            this.car.position.z += 0.01;
+            this.car.position.z -= 0.01;
         }
 
         this.renderer.render( this.scene, this.camera );
