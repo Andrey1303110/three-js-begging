@@ -428,7 +428,48 @@ export class App{
         this.camera.updateProjectionMatrix();
         this.renderer.setSize( window.innerWidth, window.innerHeight );  
     }
-    
+
+    dispose() {
+        debugger
+        // Удаляем обработчики событий
+        window.removeEventListener('resize', this.resize);
+        
+        // Очищаем рендерер
+        this.renderer.dispose();
+        
+        // Очищаем сцену от объектов
+        this.scene.traverse((object) => {
+            if (object.geometry) object.geometry.dispose();
+            if (object.material) {
+                if (Array.isArray(object.material)) {
+                    object.material.forEach(material => material.dispose());
+                } else {
+                    object.material.dispose();
+                }
+            }
+            if (object.texture) object.texture.dispose();
+        });
+
+        // Очищаем анимации
+        if (this.mixer) {
+            this.mixer.stopAllAction();
+            this.mixer.uncacheRoot(this.player);
+        }
+
+        // Очищаем массивы врагов и пуль
+        this.enemies.forEach(enemy => {
+            enemy.mixer.stopAllAction();
+            enemy.mixer.uncacheRoot(enemy);
+        });
+        this.enemies = [];
+        this.bullets = [];
+
+        // Очищаем анимационный цикл
+        this.renderer.setAnimationLoop(null);
+
+        console.log("App disposed");
+    }
+
 	render() {
         const deltaTime = this.clock.getDelta();
         this.updateMovement(deltaTime); 
