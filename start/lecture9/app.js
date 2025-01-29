@@ -5,7 +5,6 @@ import { RGBELoader } from '../../libs/three/examples/jsm/loaders/RGBELoader.js'
 import { LoadingBar } from '../../libs/LoadingBar.js';
 import { GUI } from '../../libs/three/examples/jsm/libs/lil-gui.module.min.js';
 
-const ENEMY_SPEED = 2;
 const DEFAULT_SPEED = 4;
 const MAX_SPEED = 8;
 
@@ -16,7 +15,7 @@ export class App{
 
         this.clock = new THREE.Clock();
         
-		this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 );
+		this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 500 );
         this.camera.position.set(0, 1, 5);
         
 		this.scene = new THREE.Scene();
@@ -46,9 +45,9 @@ export class App{
         this.lastShootTime = 0;
         this.lastEnemyIndex = 0;
 
-		this.scene.fog = new THREE.FogExp2( 0xefd1b5, 0.0025 )
+		this.scene.fog = new THREE.FogExp2( 0xefd1b5, 0.005 )
 
-		var grid = new THREE.GridHelper( 2000, 40, 0x000000, 0x0e0e0e );
+		let grid = new THREE.GridHelper( 1000, 20, 0x000000, 0x0e0e0e );
 		grid.position.y = -10;
 		grid.material.opacity = 0.2;
 		grid.material.transparent = true;
@@ -142,31 +141,16 @@ export class App{
     }
 
     addEnemies() {
-        // const array = [
-        //     [{x:-6,y:-4},   {x:2,y:-4},  {x:-2,y:-4},  {x:6,y:-4}],
-        //     [{x:-6,y:0},    {x:2,y:0},   {x:-2,y:0},   {x:6,y:0}],
-        //     [{x:-6,y:4},    {x:2,y:4},   {x:-2,y:4},   {x:6,y:4}],
-        // ];
-
-        // const flatArray = array.flat();
-        // const coordinates = Math.floor(flatArray * Math.random()) - 1;
-
-        // setInterval(() => this.addEnemy(gltf), 1000);
+        const enemiesCount = 20;
 
         if (!this.originalGLTF) {
             console.error("GLTF-модель ещё не загружена!");
             return;
         }
 
-        for (let i = 0; i < 100; i++) {
+        for (let i = 0; i < enemiesCount; i++) {
             this.addEnemy(this.originalGLTF);
         }
-
-        // array.forEach(subarray => {
-        //     subarray.forEach(element => {
-        //         this.addEnemy(gltf, element);
-        //     })
-        // });
     }
 
     getRandCoordinates() {
@@ -260,11 +244,10 @@ export class App{
         }
 
         const offset = new THREE.Vector3(0, 2, 5); // Смещение камеры
+        const elasticity = 3; // Параметр эластичности
 
         const targetPosition = new THREE.Vector3().copy(this.player.position).add(offset);
-        const elasticity = 4; // Параметр эластичности
 
-        // Плавное движение камеры
         this.camera.position.lerp(targetPosition, deltaTime * elasticity);
 
         // Камера смотрит на игрока
@@ -361,7 +344,7 @@ export class App{
             return
         }
 
-        const reloadTime = 0.35;
+        const reloadTime = 0.4;
 
         if (this.clock.elapsedTime <= this.lastShootTime + reloadTime) {
             return
@@ -378,7 +361,7 @@ export class App{
         
         // Анимация пули - перемещение вперед
         const bulletSpeed = MAX_SPEED * 2; // Скорость полета пули
-        const bulletLifetime = 5; // Время жизни пули в секундах
+        const bulletLifetime = 3; // Время жизни пули в секундах
 
         const shootDirection = new THREE.Vector3(0, 0, -1); // Двигаем пулю вперед
         this.bullets.push({ mesh: bullet, direction: shootDirection, speed: bulletSpeed, lifetime: bulletLifetime });
@@ -392,34 +375,64 @@ export class App{
             return;
         }
 
+        const bulletsToRemove = [];
+        const enemiesToRemove = [];
+
         this.bullets.forEach((bullet, bulletIndex) => {
+            // Обновляем позицию пули
             bullet.mesh.position.add(bullet.direction.clone().multiplyScalar(bullet.speed * deltaTime));
             bullet.lifetime -= deltaTime;
 
+            // Обновляем матрицу и boundingBox пули
+            bullet.mesh.updateMatrixWorld();
+            if (!bullet.boundingBox) {
+                bullet.boundingBox = new THREE.Box3().setFromObject(bullet.mesh);
+            } else {
+                bullet.boundingBox.copy(bullet.mesh.geometry.boundingBox).applyMatrix4(bullet.mesh.matrixWorld);
+            }
+
             // Проверяем коллизию пули с врагами
             this.enemies.forEach((enemy, enemyIndex) => {
-                const bulletBox = new THREE.Box3().setFromObject(bullet.mesh);
-                const enemyBox = new THREE.Box3().setFromObject(enemy);
+                // Обновляем матрицу и boundingBox врага
+                enemy.updateMatrixWorld();
 
-                if (bulletBox.intersectsBox(enemyBox)) {
-                    // Если коллизия обнаружена, удаляем пулю и врага
-                    console.log('Collision detected!');
-                    
-                    // Удаляем пулю
-                    this.scene.remove(bullet.mesh);
-                    this.bullets.splice(bulletIndex, 1);
+                enemy.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        if (!child.boundingBox) {
+                            child.boundingBox = new THREE.Box3().setFromObject(child);
+                        }
+            
+                        // Обновляем boundingBox врага
+                        child.boundingBox.copy(child.geometry.boundingBox).applyMatrix4(child.matrixWorld);
 
-                    // Удаляем врага
-                    this.scene.remove(enemy);
-                    this.enemies.splice(enemyIndex, 1);
-                }
+                        // Проверяем пересечение boundingBox пули и врага
+                        if (bullet.boundingBox.intersectsBox(child.boundingBox)) {
+                            console.log(`Collision detected between bullet and enemy #${enemyIndex}!`);
+
+                            // Записываем объекты для удаления
+                            enemiesToRemove.push(enemyIndex);
+                            bulletsToRemove.push(bulletIndex);
+                        }
+                    }
+                });
             });
 
-            // Удаляем пулю, если она вышла за пределы или её время жизни истекло
+            // Удаляем пулю, если её время жизни истекло
             if (bullet.lifetime <= 0) {
-                this.scene.remove(bullet.mesh);
-                this.bullets.splice(bulletIndex, 1);
+                bulletsToRemove.push(bulletIndex);
             }
+        });
+
+        // Удаляем пули
+        bulletsToRemove.forEach((bulletIndex) => {
+            this.scene.remove(this.bullets[bulletIndex].mesh);
+            this.bullets.splice(bulletIndex, 1);
+        });
+
+        // Удаляем врагов
+        enemiesToRemove.forEach((enemyIndex) => {
+            this.scene.remove(this.enemies[enemyIndex]);
+            this.enemies.splice(enemyIndex, 1);
         });
     }
     
@@ -472,7 +485,9 @@ export class App{
 
 	render() {
         const deltaTime = this.clock.getDelta();
-        this.updateMovement(deltaTime); 
+
+        this.updateMovement(deltaTime);
+        this.updateCamera(deltaTime);
         this.updateBullets(deltaTime); // Обновление полета пуль
     
         if (this.mixer) this.mixer.update(deltaTime);
@@ -480,15 +495,11 @@ export class App{
 
         if (this.enemies) {
             this.enemies.forEach(enemy => {
-                enemy.position.z += ENEMY_SPEED * deltaTime;
-                if (!enemy.mixer) return;
                 enemy.mixer.update(deltaTime);
             })
         }
 
-        this.updateCamera(deltaTime);
-        this.player.position.z -= this.player.currentSpeed * deltaTime;
-    
+        this.player.position.z -= this.player.currentSpeed * deltaTime;    
         this.renderer.render( this.scene, this.camera );
     }
 }
