@@ -4,9 +4,10 @@ import { DRACOLoader } from '../../libs/three/examples/jsm/loaders/DRACOLoader.j
 import { RGBELoader } from '../../libs/three/examples/jsm/loaders/RGBELoader.js';
 import { LoadingBar } from '../../libs/LoadingBar.js';
 import { GUI } from '../../libs/three/examples/jsm/libs/lil-gui.module.min.js';
+import { City } from './City.js';
 
-const DEFAULT_SPEED = 4;
-const MAX_SPEED = 8;
+const DEFAULT_SPEED = 2;
+const MAX_SPEED = 6;
 
 export class App{
 	constructor(){
@@ -47,11 +48,11 @@ export class App{
 
 		this.scene.fog = new THREE.FogExp2(0xefd1b5, 0.005);
 
-		let grid = new THREE.GridHelper(1000, 20, 0x000000, 0x0e0e0e);
-		grid.position.y = -10;
-		grid.material.opacity = 0.2;
-		grid.material.transparent = true;
-		this.scene.add(grid);
+		// let grid = new THREE.GridHelper(1000, 20, 0x000000, 0x0e0e0e);
+		// grid.position.y = 0;
+		// grid.material.opacity = 0.2;
+		// grid.material.transparent = true;
+		// this.scene.add(grid);
         
         window.addEventListener('resize', this.resize.bind(this));
         window.addEventListener('beforeunload', () => this.dispose());
@@ -59,6 +60,8 @@ export class App{
         this.setupKeyControls();
 
         this.tiltAngle = 0;
+
+        this.city = new City(this.scene);
 
         window.test = this;
 	}
@@ -107,7 +110,7 @@ export class App{
     addPlayer(gltf) {
         this.player = gltf.scene;
         this.player.rotation.y = Math.PI/2;
-        this.player.position.y = 0;
+        this.player.position.y = 65;
         this.player.currentSpeed = DEFAULT_SPEED;
         // this.player.position.z = -0.85;
         this.scene.add(gltf.scene);
@@ -153,26 +156,12 @@ export class App{
         }
     }
 
-    getRandCoordinates() {
-        const array = [
-            [{x:-6,y:-4},   {x:2,y:-4},  {x:-2,y:-4},  {x:6,y:-4}],
-            [{x:-6,y:0},    {x:2,y:0},   {x:-2,y:0},   {x:6,y:0}],
-            [{x:-6,y:4},    {x:2,y:4},   {x:-2,y:4},   {x:6,y:4}],
-        ];
-
-        const flatArray = array.flat();
-        const randIndex = Math.floor(flatArray.length * Math.random());
-        if (randIndex === this.lastEnemyIndex) return this.getRandCoordinates();
-        this.lastEnemyIndex = randIndex;
-        return flatArray[randIndex];
-    }
-
     addEnemy(gltf) {
         const enemy = gltf.scene.clone();
         enemy.rotation.y = Math.PI * 1.5;
         
-        const x = getRandomInRange(-19, 19);
-        const y = getRandomInRange(-9, 9);
+        const x = getRandomInRange(-30, 30);
+        const y = getRandomInRange(55, 75);
         const startPositionOffset = 15;
         const offsetBetweenEnemies = 10;
         const zPosition = (this.enemies.length + 1) * offsetBetweenEnemies + startPositionOffset;
@@ -494,6 +483,7 @@ export class App{
 
         if (this.enemies) {
             this.enemies.forEach(enemy => {
+                enemy.position.z += DEFAULT_SPEED * deltaTime;
                 enemy.mixer.update(deltaTime);
             })
         }
