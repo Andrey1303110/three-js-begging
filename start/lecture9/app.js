@@ -10,30 +10,30 @@ const MAX_SPEED = 8;
 
 export class App{
 	constructor(){
-		const container = document.createElement( 'div' );
-		document.body.appendChild( container );
+		const container = document.createElement('div');
+		document.body.appendChild(container);
 
         this.clock = new THREE.Clock();
         
-		this.camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 500 );
+		this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 250);
         this.camera.position.set(0, 1, 5);
         
 		this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color( 0xaaaaaa );
+        this.scene.background = new THREE.Color(0xefd1b5);
         
 		const ambient = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 0.5);
 		this.scene.add(ambient);
         
-        const light = new THREE.DirectionalLight( 0xFFFFFF, 4 );
+        const light = new THREE.DirectionalLight(0xFFFFFF, 4);
         light.position.set(0.2, 1, 1);
         this.scene.add(light);
 			
-		this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true } );
-		this.renderer.setPixelRatio( window.devicePixelRatio );
-		this.renderer.setSize( window.innerWidth, window.innerHeight );
+		this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+		this.renderer.setPixelRatio(window.devicePixelRatio);
+		this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.outputEncoding = THREE.sRGBEncoding;
         this.renderer.physicallyCorrectLights = true;
-        container.appendChild( this.renderer.domElement );
+        container.appendChild(this.renderer.domElement);
 		this.setEnvironment();
 		
         this.loadingBar = new LoadingBar();
@@ -45,15 +45,15 @@ export class App{
         this.lastShootTime = 0;
         this.lastEnemyIndex = 0;
 
-		this.scene.fog = new THREE.FogExp2( 0xefd1b5, 0.005 )
+		this.scene.fog = new THREE.FogExp2(0xefd1b5, 0.005);
 
-		let grid = new THREE.GridHelper( 1000, 20, 0x000000, 0x0e0e0e );
+		let grid = new THREE.GridHelper(1000, 20, 0x000000, 0x0e0e0e);
 		grid.position.y = -10;
 		grid.material.opacity = 0.2;
 		grid.material.transparent = true;
-		this.scene.add( grid );
+		this.scene.add(grid);
         
-        window.addEventListener('resize', this.resize.bind(this) );
+        window.addEventListener('resize', this.resize.bind(this));
         window.addEventListener('beforeunload', () => this.dispose());
 
         this.setupKeyControls();
@@ -65,18 +65,18 @@ export class App{
     
     setEnvironment(){
         const loader = new RGBELoader();
-        const pmremGenerator = new THREE.PMREMGenerator( this.renderer );
+        const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
         pmremGenerator.compileEquirectangularShader();
          
-        loader.load( '../../assets/hdr/venice_sunset_1k.hdr', ( texture ) => {
-          const envMap = pmremGenerator.fromEquirectangular( texture ).texture;
+        loader.load('../../assets/hdr/venice_sunset_1k.hdr', (texture) => {
+          const envMap = pmremGenerator.fromEquirectangular(texture).texture;
           pmremGenerator.dispose();
 
           this.scene.environment = envMap;
 
         }, undefined, (err)=>{
-            console.error( `An error occurred setting the environment ${err.message}`);
-        } );
+            console.error(`An error occurred setting the environment ${err.message}`);
+        });
     }
     
     loadGLTF() {
@@ -101,7 +101,7 @@ export class App{
             err => {
                 console.error(err);
             }
-        );
+);
     }
 
     addPlayer(gltf) {
@@ -113,31 +113,31 @@ export class App{
         this.scene.add(gltf.scene);
         this.loadingBar.visible = false;
 
-        this.mixer = new THREE.AnimationMixer( this.player );
+        this.mixer = new THREE.AnimationMixer(this.player);
         this.animations = {};
 
         const names = [];
 
-        gltf.animations.forEach( clip => {
+        gltf.animations.forEach(clip => {
             const name = clip.name.toLowerCase();
             names.push(name);
             this.animations[name] = clip;
         })
 
-        console.log( `animations: ${names.join(',')}`);
+        console.log(`animations: ${names.join(',')}`);
         
         this.action = 'fuselage';
 
         const options = { name: 'fuselage' };
 
         const gui = new GUI();
-        gui.add(options, 'name', names).onChange( name => { this.action = name });
+        gui.add(options, 'name', names).onChange(name => { this.action = name });
 
-        this.scene.add( gltf.scene );
+        this.scene.add(gltf.scene);
         
         this.loadingBar.visible = false;
         
-        this.renderer.setAnimationLoop( this.render.bind(this));
+        this.renderer.setAnimationLoop(this.render.bind(this));
     }
 
     addEnemies() {
@@ -197,7 +197,7 @@ export class App{
 		const clip = this.animations[name.toLowerCase()];
 
 		if (clip!==undefined){
-			const action = this.mixer.clipAction( clip );
+			const action = this.mixer.clipAction(clip);
 			action.reset();
 			this.actionName = name.toLowerCase();
 			action.play();
@@ -439,11 +439,10 @@ export class App{
     resize(){
         this.camera.aspect = window.innerWidth / window.innerHeight;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize( window.innerWidth, window.innerHeight );  
+        this.renderer.setSize(window.innerWidth, window.innerHeight);  
     }
 
     dispose() {
-        debugger
         // Удаляем обработчики событий
         window.removeEventListener('resize', this.resize);
         
